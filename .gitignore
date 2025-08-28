@@ -401,3 +401,4 @@ FodyWeavers.xsd
 *.sln.iml
 Ssit.IoC/.idea
 Ssit.IoC/.DS_Store
+.DS_Store

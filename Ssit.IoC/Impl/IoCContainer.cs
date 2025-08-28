@@ -48,6 +48,8 @@ internal class IoCContainer : IIoCContainer, IImplementationMapper
         }
         _disposables.Clear();
         _instances.Clear();
+
+        GC.Collect();
     }
 
     public TType Get<TType>()

@@ -12,21 +12,18 @@ public interface IIoCContainerBuilder
     /// <returns>The current IoC container builder with the parent container set.</returns>
     IIoCContainerBuilder WithParent(IIoCContainer container);
 
-    /// Adds an existing instance of the specified abstract type to the IoC container.
-    /// <typeparam name="TAbstract">The type of the abstract class being registered.</typeparam>
-    /// <param name="instance">The instance of the abstract class to register.</param>
-    /// <returns>An instance of IIoCContainerBuilder.</returns>
-    IIoCContainerBuilder WithInstance<TAbstract>(TAbstract instance)
-        where TAbstract : class;
 
-    /// <summary>
-    /// Registers an instance of an object with specified types in the IoC container.
-    /// </summary>
-    /// <param name="instance">The instance to be registered.</param>
-    /// <param name="asTypes">The types with which the instance will be associated.</param>
-    /// <returns>A reference to the current <see cref="IIoCContainerBuilder"/>.</returns>
-    IIoCContainerBuilder WithInstance(object instance, params Type[] asTypes);
+    /// Registers an instance of the specified type to the IoC container.
+    /// <param name="instance">The instance to be registered in the IoC container.</param>
+    /// <typeparam name="TType">The type of the instance being registered. Must be a reference type.</typeparam>
+    /// <returns>The current IoC container builder with the instance registered.</returns>
+    IIoCContainerBuilder WithInstance<TType>(TType instance) where TType : class;
 
+    /// Specifies the type this instance should be registered as in the IoC container.
+    /// <typeparam name="TAbstract">The abstract type to register the instance as.</typeparam>
+    /// <returns>The current IoC container builder with the specified type registration applied.</returns>
+    IIoCContainerBuilder As<TAbstract>() where TAbstract : class;
+    
     /// <summary>
     /// Registers a singleton implementation for a given abstract type in the IoC container.
     /// </summary>

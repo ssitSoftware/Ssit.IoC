@@ -14,8 +14,9 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
     private readonly IoCContainer _container = new();
 
     public IImplementationMapper ImplementationMapper => _container;
-    
     private readonly Dictionary<Type, SingletonInfo> _singletonTypes = new();
+
+    private object _lastInstance = null;
 
     public IoCContainerBuilder()
     {
@@ -32,18 +33,26 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
         return this;
     }
 
-    public IIoCContainerBuilder WithInstance<TAbstract>(TAbstract instance) where TAbstract: class
+    public IIoCContainerBuilder As<TAbstract>() where TAbstract : class
     {
-        _container.Register(typeof(TAbstract), instance);
+        if (_lastInstance is null)
+        {
+            throw new InvalidOperationException("Cannot register type as it has not been instantiated.");
+        }
+
+        if (!typeof(TAbstract).IsAssignableFrom(_lastInstance.GetType()))
+        {
+            throw new InvalidOperationException("Cannot register type as it is not assignable to the abstract type.");
+        }
+        
+        _container.Register(typeof(TAbstract), _lastInstance);
         return this;
     }
 
-    public IIoCContainerBuilder WithInstance(object instance, params Type[] asTypes)
+    public IIoCContainerBuilder WithInstance<TType>(TType instance) where TType : class
     {
-        foreach (var type in asTypes)
-        {
-            _container.Register(type, instance);
-        }
+        _container.Register(typeof(TType), instance);
+        _lastInstance = instance;
         return this;
     }
 
@@ -56,12 +65,16 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
                 Parameter = parameter
             }
         );
+
+        _lastInstance = null;
         return this;
     }
         
     public IIoCContainerBuilder WithImplementation(Type @abstract, Type implementation)
     {
         _container.RegisterImplementation(@abstract, implementation);
+        _lastInstance = null;
+        
         return this;
     }
 
@@ -69,6 +82,8 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
         where TAbstract : class where TImplementation : class, TAbstract
     {
         _container.RegisterImplementation(typeof(TAbstract), typeof(TImplementation));
+        _lastInstance = null;
+        
         return this;
     }
     
@@ -76,6 +91,8 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
         where TAbstract : class where TImplementation : class, TAbstract
     {
         _container.RegisterImplementation(typeof(TAbstract), typeof(TImplementation), key);
+        
+        _lastInstance = null;
         return this;
     }
 
@@ -104,6 +121,8 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
 
     public IIoCContainer Build()
     {
+        _lastInstance = null;
+        
         foreach (var type in _singletonTypes)
         {
             if (type.Value is null)
