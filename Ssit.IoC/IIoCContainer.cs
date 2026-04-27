@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Ssit.IoC;
 
@@ -56,5 +57,11 @@ public interface IIoCContainer: IDisposable
     /// <param name="type">The type of the object to construct.</param>
     /// <param name="parameters">Optional parameters to pass to the constructor.</param>
     /// <returns>An object of the specified type.</returns>
-    object IoCConstruct(Type type, object parameters = null);
+    object IoCConstruct([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type type, object parameters = null);
+
+    /// Retrieves all registered instances of the specified type from the IoC container.
+    /// <typeparam name="T">The type of the instances to retrieve.</typeparam>
+    /// <returns>An enumerable of all instances of the specified type registered in the container.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown when the requested type is not registered in the container.</exception>
+    IEnumerable<T> Fetch<T>();
 }

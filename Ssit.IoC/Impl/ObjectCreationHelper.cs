@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 
@@ -8,8 +9,10 @@ namespace Ssit.IoC.Impl;
 internal static class ObjectCreationHelper
 {
     public delegate bool ResolveDelegate(Type type, out object instance);
-        
-    public static object CreateObject(Type type, object creationParameters, ResolveDelegate resolveDelegate)
+
+    public static object CreateObject(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type type,
+        object creationParameters, ResolveDelegate resolveDelegate)
     {
         if (type.IsAbstract)
         {
@@ -32,7 +35,6 @@ internal static class ObjectCreationHelper
 
     private static bool MatchConstructor(ConstructorInfo constructor, ResolveDelegate resolveDelegate, object creationParameters, List<object> parametersList)
     {            
-
         parametersList.Clear();
 
         var parameters = constructor.GetParameters();
@@ -40,7 +42,7 @@ internal static class ObjectCreationHelper
         {
             return false;
         }
-
+        
         foreach (var parameter in parameters)
         {
             if (!MatchParameter(parameter.ParameterType, resolveDelegate, creationParameters, out var instance) && !parameter.HasDefaultValue)

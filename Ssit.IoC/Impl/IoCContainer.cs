@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace Ssit.IoC.Impl;
 
@@ -28,7 +30,7 @@ internal class IoCContainer : IIoCContainer, IImplementationMapper
         }
     }
 
-    public void RegisterImplementation(Type type, Type impl, string key = null)
+    public void RegisterImplementation(Type type, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type impl, string key = null)
     {
         if (key == null)
         {
@@ -96,7 +98,7 @@ internal class IoCContainer : IIoCContainer, IImplementationMapper
 
     public TType IoCConstruct<TType>(object parameters = null) => (TType) IoCConstruct(typeof(TType), parameters);
 
-    public object IoCConstruct(Type type, object parameters = null)
+    public object IoCConstruct([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type type, object parameters = null)
     {
         if (type.IsAbstract)
         {
@@ -104,6 +106,23 @@ internal class IoCContainer : IIoCContainer, IImplementationMapper
         }
 
         return ObjectCreationHelper.CreateObject(type, parameters, TryGet);
+    }
+
+    public IEnumerable<T> Fetch<T>()
+    {
+        var instances = new HashSet<T>();
+        
+        foreach (var instance in _instances.Values)
+        {
+            if (instance is T t) instances.Add(t);
+        }
+        
+        if (Parent is not null)
+        {
+            instances.UnionWith(Parent.Fetch<T>());
+        }
+
+        return instances;
     }
 
     private bool TryGetImplementation(Type abstractType, string key, out Type type)
@@ -115,6 +134,7 @@ internal class IoCContainer : IIoCContainer, IImplementationMapper
         return _keyedImplementations.TryGetValue((key, abstractType), out type);
     }
     
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
     public Type ResolveImplementation(Type abstractType, string key = null)
     {
         if (TryGetImplementation(abstractType, key, out var type))
@@ -135,5 +155,6 @@ internal class IoCContainer : IIoCContainer, IImplementationMapper
         return ParentImplementationMapper.ResolveImplementation(abstractType, key);
     }
 
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
     public Type ResolveImplementation<TType>(string key = null) => ResolveImplementation(typeof(TType), key);
 }

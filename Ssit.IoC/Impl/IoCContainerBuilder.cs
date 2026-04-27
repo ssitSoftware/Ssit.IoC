@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace Ssit.IoC.Impl;
 
@@ -7,8 +9,10 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
 {
     private class SingletonInfo
     {
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
         public Type Type;
         public object Parameter;
+        public List<Type> Interfaces;
     }
         
     private readonly IoCContainer _container = new();
@@ -16,7 +20,8 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
     public IImplementationMapper ImplementationMapper => _container;
     private readonly Dictionary<Type, SingletonInfo> _singletonTypes = new();
 
-    private object _lastInstance = null;
+    private object _lastInstance;
+    private SingletonInfo _lastSingletonInfo;
 
     public IoCContainerBuilder()
     {
@@ -24,7 +29,9 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
         _container.Register(typeof(IIoCContainer), _container);
         _container.Register(typeof(IImplementationMapper), _container);
     }
-        
+
+    public IIoCContainer Parent => _container.Parent;
+
     public IIoCContainerBuilder WithParent(IIoCContainer container)
     {
         _container.Parent = container;
@@ -35,6 +42,13 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
 
     public IIoCContainerBuilder As<TAbstract>() where TAbstract : class
     {
+        if (_lastSingletonInfo is not null)
+        {
+            _lastSingletonInfo.Interfaces.Add(typeof(TAbstract));
+            _singletonTypes.Add(typeof(TAbstract), _lastSingletonInfo);
+            return this;
+        }
+        
         if (_lastInstance is null)
         {
             throw new InvalidOperationException("Cannot register type as it has not been instantiated.");
@@ -53,28 +67,30 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
     {
         _container.Register(typeof(TType), instance);
         _lastInstance = instance;
+        _lastSingletonInfo = null;
         return this;
     }
 
     public IIoCContainerBuilder WithSingleton<TAbstract, TImplementation>(object parameter = null)
         where TAbstract : class where TImplementation : class, TAbstract
     {
-        _singletonTypes.Add(typeof(TAbstract), new SingletonInfo
-            {
-                Type = typeof(TImplementation),
-                Parameter = parameter
-            }
-        );
+        _lastSingletonInfo = new SingletonInfo
+        {
+            Type = typeof(TImplementation),
+            Parameter = parameter,
+            Interfaces = [typeof(TAbstract)]
+        };
 
+        _singletonTypes.Add(typeof(TAbstract), _lastSingletonInfo); 
         _lastInstance = null;
         return this;
     }
         
-    public IIoCContainerBuilder WithImplementation(Type @abstract, Type implementation)
+    public IIoCContainerBuilder WithImplementation(Type @abstract, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type implementation)
     {
         _container.RegisterImplementation(@abstract, implementation);
         _lastInstance = null;
-        
+        _lastSingletonInfo = null;
         return this;
     }
 
@@ -83,7 +99,7 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
     {
         _container.RegisterImplementation(typeof(TAbstract), typeof(TImplementation));
         _lastInstance = null;
-        
+        _lastSingletonInfo = null;
         return this;
     }
     
@@ -93,6 +109,7 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
         _container.RegisterImplementation(typeof(TAbstract), typeof(TImplementation), key);
         
         _lastInstance = null;
+        _lastSingletonInfo = null;
         return this;
     }
 
@@ -122,19 +139,19 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
     public IIoCContainer Build()
     {
         _lastInstance = null;
+        _lastSingletonInfo = null;
         
-        foreach (var type in _singletonTypes)
+        while (_singletonTypes.Count > 0)
         {
-            if (type.Value is null)
-                continue;
-
-            if (!TryGet(type.Key, out var _))
+            var pair = _singletonTypes.First();
+            
+            if (!TryGet(pair.Key, out _))
             {
-                throw new InvalidOperationException("Cannot create instance of type " + type.Value.Type.Name + 
-                                                    " because its constructor requires not registered services.");
+                var name = pair.Value.Type.Name;
+                throw new InvalidOperationException(
+                    $"Cannot create instance of type {name} because its constructor requires not registered services.");
             }
         }
-
         return _container;
     }
         
@@ -142,35 +159,34 @@ internal class IoCContainerBuilder: IIoCContainerBuilder
     {
         if (_container.TryGet(type, out instance))
         {
+            _singletonTypes.Remove(type);
             return true;
         }
-
-        SingletonInfo implType = null;
-            
-        if (type.IsAbstract)
+        
+        if (!_singletonTypes.TryGetValue(type, out var implType) && type.IsAbstract)
         {
-            if (!_singletonTypes.TryGetValue(type, out implType))
-            {
-                throw new KeyNotFoundException($"Implementation for {type.FullName} could not be found.");
-            }
-
-            _singletonTypes[type] = null;
-            if ( implType is null) throw new InvalidOperationException($"Circular dependency detected!");
+            throw new KeyNotFoundException($"Implementation for {type.FullName} could not be found.");
         }
 
-        if (implType is null)
+        _singletonTypes.Remove(type);
+        if ( type.IsAbstract && implType is null) throw new InvalidOperationException($"Circular dependency detected!");
+
+        implType ??= new SingletonInfo
         {
-            implType = new SingletonInfo
-            {
-                Type = type,
-                Parameter = null
-            };
-        }
+            Type = type,
+            Parameter = null,
+            Interfaces = [type]
+        };
 
         try
         {
             instance = ObjectCreationHelper.CreateObject(implType.Type, implType.Parameter, TryGet);
-            _container.Register(type, instance);
+
+            foreach (var @interface in implType.Interfaces)
+            {
+                _container.Register(@interface, instance); 
+                _singletonTypes.Remove(@interface);
+            }
             return true;
         }
         catch (Exception ex)

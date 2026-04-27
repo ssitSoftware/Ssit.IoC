@@ -7,6 +7,8 @@ namespace Ssit.IoC;
 /// </summary>
 public interface IIoCContainerBuilder
 {
+    IIoCContainer Parent { get; }
+    
     /// Adds a parent container to the current IoC container builder.
     /// <param name="container">The parent container to be associated.</param>
     /// <returns>The current IoC container builder with the parent container set.</returns>
