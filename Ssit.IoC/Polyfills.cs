@@ -1,6 +1,8 @@
+using System;
+
 #if NETSTANDARD2_0
 // Polyfills for trim-analysis attributes not available in netstandard2.0
-namespace System.Diagnostics.CodeAnalysis
+namespace Ssit.IoC
 {
     [AttributeUsage(
         AttributeTargets.Field | AttributeTargets.ReturnValue | AttributeTargets.GenericParameter |
