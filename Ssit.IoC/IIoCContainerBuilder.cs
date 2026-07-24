@@ -14,7 +14,6 @@ public interface IIoCContainerBuilder
     /// <returns>The current IoC container builder with the parent container set.</returns>
     IIoCContainerBuilder WithParent(IIoCContainer container);
 
-
     /// Registers an instance of the specified type to the IoC container.
     /// <param name="instance">The instance to be registered in the IoC container.</param>
     /// <typeparam name="TType">The type of the instance being registered. Must be a reference type.</typeparam>
@@ -33,7 +32,7 @@ public interface IIoCContainerBuilder
     /// <typeparam name="TImplementation">The concrete type implementing the abstract type.</typeparam>
     /// <param name="parameter">Optional parameter to be passed to the singleton instance.</param>
     /// <returns>The IoC container builder with the singleton registration.</returns>
-    IIoCContainerBuilder WithSingleton<TAbstract, TImplementation>(object parameter = null)
+    ISingletonRegistration<TImplementation> WithSingleton<TAbstract, TImplementation>(object parameter = null)
         where TAbstract : class where TImplementation : class, TAbstract;
 
     /// <summary>
@@ -53,8 +52,29 @@ public interface IIoCContainerBuilder
     IIoCContainerBuilder WithImplementation<TAbstract, TImplementation>()
         where TAbstract : class where TImplementation : class, TAbstract;
 
+    /// Registers the specified implementation type for the given abstract type in the IoC container.
+    /// <param name="abstract">The abstract type to be associated with the implementation type.</param>
+    /// <param name="implementation">The concrete implementation type to be registered.</param>
+    /// <returns>The current IoC container builder with the implementation registered.</returns>
     IIoCContainerBuilder WithImplementation<TAbstract, TImplementation>(string key)
         where TAbstract : class where TImplementation : class, TAbstract;
+
+    /// Adds a post build delegate to configure instances of the specified abstract type in the IoC container.
+    /// <param name="postBuildDelegate">An action that customizes or initializes instances of the specified abstract type.</param>
+    /// <typeparam name="TAbstract">The abstract type to which the creation delegate applies. Must be a reference type.</typeparam>
+    /// <returns>The current IoC container builder with the creation delegate applied.</returns>
+    IIoCContainerBuilder WithPostBuildDelegate<TAbstract>(Action<TAbstract> postBuildDelegate) where TAbstract : class;
+    
+    /// Adds a post build delegate to configure instances of the specified abstract type in the IoC container.
+    /// <param name="postBuildDelegate">An action that customizes or initializes instances of the specified abstract type.</param>
+    /// <typeparam name="TAbstract">The abstract type to which the creation delegate applies. Must be a reference type.</typeparam>
+    /// <returns>The current IoC container builder with the creation delegate applied.</returns>
+    IIoCContainerBuilder WithPostBuildDelegate<TAbstract>(Action<TAbstract, IIoCContainer> postBuildDelegate) where TAbstract : class;
+    
+    /// Adds a delegate to be executed after the IoC container is built.
+    /// <param name="postBuildDelegate">The delegate to be executed after the IoC container is constructed.</param>
+    /// <returns>The current IoC container builder with the post-build delegate set.</returns>
+    IIoCContainerBuilder WithPostBuildDelegate(Action<IIoCContainer> postBuildDelegate);
     
     /// <summary>
     /// Checks if the specified type is registered in the IoC container.

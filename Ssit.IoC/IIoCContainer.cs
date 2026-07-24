@@ -33,7 +33,6 @@ public interface IIoCContainer: IDisposable
     /// <returns>true if the type was found in the container; otherwise, false.</returns>
     bool TryGet<TType>(out TType instance);
 
-
     /// <summary>
     /// Tries to retrieve an instance of the specified type from the IoC container.
     /// </summary>
